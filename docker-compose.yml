@@ -50,7 +50,7 @@ services:
 
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
 
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////opt/airflow/airflow.db
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
 
     command: >
       bash -c "
@@ -67,3 +67,71 @@ services:
 
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - ./spark:/opt/spark 
+
+  spark-master:
+    build: ./spark
+    container_name: spark-master
+
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      --host spark-master
+      --port 7077
+      --webui-port 8080
+
+    ports:
+      - "7077:7077"
+      - "8081:8080"
+
+    environment:
+      - SPARK_MODE=master
+
+    volumes:
+      - ./spark/work-dir:/opt/spark/work-dir
+
+  # =========================
+  # SPARK WORKERS
+  # =========================
+  spark-worker-1:
+    build: ./spark    
+    container_name: spark-worker-1
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+
+    volumes:
+      - ./spark/work-dir:/opt/spark/work-dir
+
+  spark-worker-2:
+    build: ./spark
+    container_name: spark-worker-2
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+
+    volumes:
+      - ./spark/work-dir:/opt/spark/work-dir
+
+  spark-worker-3:
+    build: ./spark
+    container_name: spark-worker-3
+    depends_on:
+      - spark-master
+    environment:
+      SPARK_MODE: worker
+      SPARK_MASTER_URL: spark://spark-master:7077
+    command: >
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
+      spark://spark-master:7077
+    volumes:
+      - ./spark/work-dir:/opt/spark/work-dir
