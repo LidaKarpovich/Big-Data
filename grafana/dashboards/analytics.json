@@ -1,0 +1,78 @@
+{
+  "title": "Big Data Pipeline",
+  "uid": "bigdata",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Events in ClickHouse",
+      "type": "stat",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "rawSql": "SELECT count() as events FROM analytics.events",
+          "queryType": "table",
+          "meta": {"builderOptions": {"mode": "raw"}}
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Feature distributions",
+      "type": "barchart",
+      "gridPos": {"x": 6, "y": 0, "w": 18, "h": 8},
+      "targets": [
+        {
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "rawSql": "SELECT toString(round(x1, 0)) as x1_bucket, count() as count FROM analytics.events GROUP BY x1_bucket ORDER BY count DESC LIMIT 20",
+          "queryType": "table",
+          "meta": {"builderOptions": {"mode": "raw"}}
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "ML Model Accuracy",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "targets": [
+        {
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "rawSql": "SELECT ts as time, accuracy FROM analytics.ml_results ORDER BY ts",
+          "queryType": "timeseries",
+          "meta": {"builderOptions": {"mode": "raw"}}
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Rows Processed by ML",
+      "type": "stat",
+      "gridPos": {"x": 12, "y": 8, "w": 6, "h": 4},
+      "targets": [
+        {
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "rawSql": "SELECT max(rows_processed) as rows_processed FROM analytics.ml_results",
+          "queryType": "table",
+          "meta": {"builderOptions": {"mode": "raw"}}
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Label distribution (0 vs 1)",
+      "type": "piechart",
+      "gridPos": {"x": 18, "y": 8, "w": 6, "h": 8},
+      "targets": [
+        {
+          "datasource": {"type": "grafana-clickhouse-datasource", "uid": "clickhouse"},
+          "rawSql": "SELECT toString(toInt32(label)) as label, count() as count FROM analytics.events GROUP BY label",
+          "queryType": "table",
+          "meta": {"builderOptions": {"mode": "raw"}}
+        }
+      ]
+    }
+  ]
+}

@@ -1,57 +1,39 @@
 services:
-
   clickhouse:
-
     image: clickhouse/clickhouse-server:24.3
-
     container_name: clickhouse
-
     ports:
       - "8123:8123"
       - "9000:9000"
-
     environment:
       CLICKHOUSE_DB: analytics
       CLICKHOUSE_USER: admin
       CLICKHOUSE_PASSWORD: admin123
-
     volumes:
       - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
-
     healthcheck:
       test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
       interval: 5s
       retries: 10
 
   generator:
-
     build: ./generator
-
     depends_on:
       clickhouse:
         condition: service_healthy
-
     restart: always
 
   airflow:
-
     build: ./airflow
-
     container_name: airflow
-
     depends_on:
       clickhouse:
         condition: service_healthy
-
     ports:
       - "8080:8080"
-
     environment:
-
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
-
     command: >
       bash -c "
       airflow db migrate &&
@@ -64,36 +46,47 @@ services:
       --email admin@test.com || true &&
       airflow standalone
       "
-
     volumes:
       - ./airflow/dags:/opt/airflow/dags
-      - ./spark:/opt/spark 
+      - ./data:/opt/airflow/data
+      - ./spark:/opt/spark
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/etc/grafana/dashboards
+    depends_on:
+      clickhouse:
+        condition: service_healthy
 
   spark-master:
     build: ./spark
     container_name: spark-master
-
     command: >
       /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
       --host spark-master
       --port 7077
       --webui-port 8080
-
     ports:
       - "7077:7077"
       - "8081:8080"
-
     environment:
       - SPARK_MODE=master
-
     volumes:
       - ./spark/work-dir:/opt/spark/work-dir
+      - ./data:/opt/airflow/data
 
-  # =========================
-  # SPARK WORKERS
-  # =========================
   spark-worker-1:
-    build: ./spark    
+    build: ./spark
     container_name: spark-worker-1
     depends_on:
       - spark-master
@@ -103,9 +96,9 @@ services:
     command: >
       /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
       spark://spark-master:7077
-
     volumes:
       - ./spark/work-dir:/opt/spark/work-dir
+      - ./data:/opt/airflow/data
 
   spark-worker-2:
     build: ./spark
@@ -118,9 +111,9 @@ services:
     command: >
       /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker
       spark://spark-master:7077
-
     volumes:
       - ./spark/work-dir:/opt/spark/work-dir
+      - ./data:/opt/airflow/data
 
   spark-worker-3:
     build: ./spark
@@ -135,3 +128,4 @@ services:
       spark://spark-master:7077
     volumes:
       - ./spark/work-dir:/opt/spark/work-dir
+      - ./data:/opt/airflow/data
