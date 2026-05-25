@@ -3,7 +3,7 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 
-# ↓ вот это отсутствовало
+
 spark = SparkSession.builder \
     .appName("DistributedML") \
     .getOrCreate()
